@@ -710,7 +710,8 @@ class FortiManager(object):
             self._post_login_request("exec",
                                      self.common_datagram_params("execute", "sys/login/user",
                                                                  passwd=self._passwd, user=self._user))
-        self._lock_ctx.check_mode()
+        if not self._flatui_proxy:
+            self._lock_ctx.check_mode()
         if self.forticloud_used:
             login_url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host)
         elif self._flatui_proxy:
