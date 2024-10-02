@@ -333,8 +333,7 @@ class FortiManager(object):
     def req_resp_object(self):
         return self._req_resp_object
 
-    @property
-    def flatui_url(self, is_auth=False):
+    def get_flatui_url(self, is_auth=False):
         return "{proto}://{host}/cgi-bin/module/{base_url}".format(
             proto="https" if self._use_ssl else "http",
             host=self._host,
@@ -704,9 +703,9 @@ class FortiManager(object):
             self._post_login_request("post", None)
             self._url = "{proto}://{host}/jsonrpc".format(proto="https" if self._use_ssl else "http", host=self._host)
         elif self._flatui_proxy:
-            self._url = self.flatui_url(is_auth=True)
+            self._url = self.get_flatui_url(is_auth=True)
             self._post_login_request("post", None)
-            self._url = self.flatui_url(is_auth=False)
+            self._url = self.get_flatui_url(is_auth=False)
         else:
             self._post_login_request("exec",
                                      self.common_datagram_params("execute", "sys/login/user",
@@ -729,7 +728,7 @@ class FortiManager(object):
                 self._lock_ctx.run_unlock()
             if self._flatui_proxy:
                 try:
-                    response = self.sess.post(self.flatui_url(is_auth=True),
+                    response = self.sess.post(self.get_flatui_url(is_auth=True),
                         data=json.dumps({"url": "/gui/logout"}),
                         headers={"content-type": "application/json"},
                         verify=self.verify_ssl,
