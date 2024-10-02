@@ -220,7 +220,7 @@ class FortiManager(object):
 
     def __init__(self, host=None, user=None, passwd=None, debug=False, use_ssl=True, verify_ssl=False, timeout=300,
                  verbose=False, track_task_disable_connerr=False, disable_request_warnings=False, apikey=None,
-                 check_adom_workspace=True):
+                 check_adom_workspace=True, flatui_proxy=False):
         super(FortiManager, self).__init__()
         self._debug = debug
         self._host = host
@@ -230,6 +230,7 @@ class FortiManager(object):
         self._timeout = timeout
         self._verbose = verbose
         self._check_adom_workspace = check_adom_workspace
+        self._flatui_proxy = flatui_proxy
         self._req_id = 0
         self._sid = None
         self._url = None
@@ -323,7 +324,7 @@ class FortiManager(object):
     @property
     def sess(self):
         return self._session
-    
+
     @property
     def track_task_disable_connerr(self):
         return self._track_task_disable_connerr
@@ -331,6 +332,13 @@ class FortiManager(object):
     @property
     def req_resp_object(self):
         return self._req_resp_object
+
+    @property
+    def flatui_url(self, is_auth=False):
+        return "{proto}://{host}/cgi-bin/module/{base_url}".format(
+            proto="https" if self._use_ssl else "http",
+            host=self._host,
+            base_url="flatui_auth" if is_auth else "flatui_proxy")
 
     def getLog(self, loggername="fortinet", lvl=logging.INFO):
         if self._logger is not None:
@@ -481,6 +489,16 @@ class FortiManager(object):
                                               headers=headers, data=fac_data)
             token = res.get("access_token", "")
             json_request["access_token"] = token
+        elif self._flatui_proxy:
+            json_request["method"] = "login"
+            json_request["url"] = "/gui/userauth"
+            json_request["params"] = {
+                    "username": self._user,
+                    "secretkey": self._passwd,
+                    "logintype": 0
+            }
+            json_request["session"] = self.sid
+            json_request["id"] = self.req_id
         else:
             json_request["method"] = method
             json_request["params"] = params
@@ -537,19 +555,15 @@ class FortiManager(object):
             raise FMGValidSessionException(method, params)
         self._update_request_id()
         json_request = {}
+        json_request["method"] = method
+        json_request["params"] = params
+        json_request["session"] = self.sid
+        json_request["id"] = self.req_id
         if create_task:
             json_request["create task"] = create_task
-            json_request["method"] = method
-            json_request["params"] = params
-            json_request["session"] = self.sid
-            json_request["id"] = self.req_id
         else:
-            json_request["method"] = method
-            json_request["params"] = params
             if method == "get" and self._verbose is True:
                 json_request["verbose"] = 1
-            json_request["session"] = self.sid
-            json_request["id"] = self.req_id
         self.req_resp_object.request_json = json_request
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), verify=self.verify_ssl,
@@ -689,13 +703,21 @@ class FortiManager(object):
             self._url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host)
             self._post_login_request("post", None)
             self._url = "{proto}://{host}/jsonrpc".format(proto="https" if self._use_ssl else "http", host=self._host)
+        elif self._flatui_proxy:
+            self._url = self.flatui_url(is_auth=True)
+            self._post_login_request("post", None)
+            self._url = self.flatui_url(is_auth=False)
         else:
             self._post_login_request("exec",
                                      self.common_datagram_params("execute", "sys/login/user",
                                                                  passwd=self._passwd, user=self._user))
         self._lock_ctx.check_mode()
-        login_url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host) if self.forticloud_used \
-            else "sys/login/user"
+        if self.forticloud_used:
+            login_url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host)
+        elif self._flatui_proxy:
+            login_url = "https://{host}/cgi-bin/module/flatui_auth".format(host=self._host)
+        else:
+            login_url = "sys/login/user"
         if self.__str__() == "FortiManager instance connected to {host}.".format(host=self._host):
             return 0, {"status": {"message": "OK", "code": 0}, "url": login_url}
         else:
@@ -705,7 +727,21 @@ class FortiManager(object):
         if self.sid is not None:
             if self._lock_ctx.uses_workspace:
                 self._lock_ctx.run_unlock()
-            ret_code, response = self.execute("sys/logout")
+            if self._flatui_proxy:
+                try:
+                    response = self.sess.post(self.flatui_url(is_auth=True),
+                        data=json.dumps({"url": "/gui/logout"}),
+                        headers={"content-type": "application/json"},
+                        verify=self.verify_ssl,
+                        timeout=self.timeout)
+                    return self._handle_response(response, login=False)
+                except Exception as err:
+                    msg = "Exception while logging out of FMG: {err_type} {err}".format(err_type=type(err), err=err)
+                    self.req_resp_object.error_msg = msg
+                    self.dprint()
+                    raise FMGBaseException(msg)
+            else:
+                ret_code, response = self.execute("sys/logout")
             self.sid = None
             return ret_code, response
 
@@ -774,6 +810,12 @@ class FortiManager(object):
         else:
             raise FMGRequestNotFormedCorrect("Free Form Request was not formed correctly. A dictionary object with a "
                                              "data key is required")
+
+    def flatui_proxy(self, url, *args, **kwargs):
+        method = "get"
+        if kwargs:
+            method = kwargs.pop("method", "get")
+
 
     def __str__(self):
         if self.sid is not None:
