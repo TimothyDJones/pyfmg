@@ -415,7 +415,7 @@ class FortiManager(object):
         print("\n" + "-" * 100 + "\n")
 
     def _set_sid(self, response):
-        if self.api_key_used:
+        if self.api_key_used or self.is_flatui_proxy:
             if self.sid is None:
                 self.sid = str(uuid.uuid4()) if self._passwd is None else str(uuid.uuid4()) + "-" + self._passwd[-4:]
         else:
@@ -582,8 +582,13 @@ class FortiManager(object):
                        "Authorization": "Bearer {apikey}".format(apikey=self._passwd)}
         else:
             headers = {"content-type": "application/json"}
-            if self.is_flatui_proxy and self.xsrf_token:
-                headers.update({"Xsrf-Token": "{token}".format(token=self.xsrf_token)})
+        if self.is_flatui_proxy and self.xsrf_token:
+            if self._logger is None:
+                self.getLog()
+            headers.update({"Xsrf-Token": "{token}".format(token=self.xsrf_token)})
+            self._logger.info("HTTP Headers: {h}".format(h=pformat(
+                object
+            )))
         self.req_resp_object.reset()
         if self.sid is None:
             raise FMGValidSessionException(method, params)
@@ -740,6 +745,7 @@ class FortiManager(object):
         elif self.is_flatui_proxy:
             self._url = self.get_flatui_url(is_auth=True)
             self._post_login_request("post", None)
+            self._set_sid(None)     # Set dummy value for session ID to allow further actions.
             self._url = self.get_flatui_url(is_auth=False)
         else:
             self._post_login_request("exec",
