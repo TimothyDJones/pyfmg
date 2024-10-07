@@ -508,9 +508,9 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
-            self._logger.info("Response from login:\n{res}\nSession from login:\n{c}"
-                .format(res=pformat(object=response, indent=2, compact=True),
-                    c=pformat(object=self.sess, indent=2, compact=True)))
+            # self._logger.info("Response from login:\n{res}\nSession from login:\n{c}"
+            #     .format(res=pformat(object=response, indent=2, compact=True),
+            #         c=pformat(object=self.sess, indent=2, compact=True)))
             if self.forticloud_used:
                 rev_url = "https://customerapiauth.fortinet.com/api/v1/oauth/revoke_token/"
                 self._revoke_oauth_token(rev_url, headers, token)
