@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from pkgutil import get_data
 from pprint import pformat
+from textwrap import indent
 import uuid
 from datetime import datetime
 import time
@@ -236,6 +237,9 @@ class FortiManager(object):
         self._req_id = 0
         self._sid = None
         self._url = None
+        # Variable for holding "Xsrf-token" derived from "HTTP_CSRF_TOKEN" cookie
+        # for flatui_proxy API calls.
+        self._xsrf_token = None
         self._apikeyused = True if passwd is None and apikey is not None else False
         self._forticloudused = True if host.endswith(("fortimanager.forticloud.com", "fortianalyzer.forticloud.com")) \
             else False
@@ -334,6 +338,17 @@ class FortiManager(object):
     @property
     def req_resp_object(self):
         return self._req_resp_object
+
+    @property
+    def xsrf_token(self):
+        return self._xsrf_token
+
+    @xsrf_token.setter
+    def xsrf_token(self, val):
+        if self._flatui_proxy:
+            self._xsrf_token = val
+        else:
+            self._xsrf_token = None
 
     def get_flatui_url(self, is_auth=False):
         return "{proto}://{host}/cgi-bin/module/{base_url}".format(
@@ -509,8 +524,16 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
-            print("Cookies from login:\n{c}"
-                .format(c=self.sess.cookies.get_dict()))
+            if self._flatui_proxy:
+                if self._logger is None:
+                    self.getLog()
+                sess_cookies = self.sess.cookies.get_dict()
+                self._logger.debug("Cookies from login:\n{c}"
+                    .format(c=pformat(object=sess_cookies, compact=True, indent=2)))
+                if "HTTP_CSRF_TOKEN" in sess_cookies:
+                    self.xsrf_token = sess_cookies.get("HTTP_CSRF_TOKEN")
+                else:
+                    raise ValueError("Unable to obtain XSRF token for flatui_proxy.")
             #     .format(res=pformat(object=response, indent=2, compact=True),
             #         c=pformat(object=self.sess, indent=2, compact=True)))
             if self.forticloud_used:
@@ -555,6 +578,8 @@ class FortiManager(object):
                        "Authorization": "Bearer {apikey}".format(apikey=self._passwd)}
         else:
             headers = {"content-type": "application/json"}
+            if self._flatui_proxy and self.xsrf_token:
+                headers.update({"Xsrf-token": "{token}".format(token=self.xsrf_token)})
         self.req_resp_object.reset()
         if self.sid is None:
             raise FMGValidSessionException(method, params)
