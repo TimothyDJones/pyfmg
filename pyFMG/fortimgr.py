@@ -579,7 +579,7 @@ class FortiManager(object):
         else:
             headers = {"content-type": "application/json"}
             if self._flatui_proxy and self.xsrf_token:
-                headers.update({"Xsrf-token": "{token}".format(token=self.xsrf_token)})
+                headers.update({"Xsrf-Token": "{token}".format(token=self.xsrf_token)})
         self.req_resp_object.reset()
         if self.sid is None:
             raise FMGValidSessionException(method, params)
