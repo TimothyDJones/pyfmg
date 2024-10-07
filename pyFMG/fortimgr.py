@@ -508,12 +508,11 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
+            self._logger.info("Session from login:\n{c}".format(
+                c=pformat(object=self.sess, indent=2, compact=True)))
             if self.forticloud_used:
                 rev_url = "https://customerapiauth.fortinet.com/api/v1/oauth/revoke_token/"
                 self._revoke_oauth_token(rev_url, headers, token)
-
-            self._logger.info("Session from login:\n{c}".format(
-                c=pformat(object=self.sess, indent=2, compact=True)))
 
             return self._handle_response(response, login=True)
         except ReqConnError as err:
