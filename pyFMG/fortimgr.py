@@ -600,6 +600,9 @@ class FortiManager(object):
         json_request["id"] = self.req_id
         if create_task:
             json_request["create task"] = create_task
+        elif self.is_flatui_proxy:
+            for k, v in ((json_request.pop("params", [{}]))[0]).items():
+                json_request[k] = v
         else:
             if method == "get" and self._verbose is True:
                 json_request["verbose"] = 1
