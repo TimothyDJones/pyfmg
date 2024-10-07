@@ -340,12 +340,16 @@ class FortiManager(object):
         return self._req_resp_object
 
     @property
+    def is_flatui_proxy(self):
+        return self._flatui_proxy
+
+    @property
     def xsrf_token(self):
         return self._xsrf_token
 
     @xsrf_token.setter
     def xsrf_token(self, val):
-        if self._flatui_proxy:
+        if self.is_flatui_proxy:
             self._xsrf_token = val
         else:
             self._xsrf_token = None
@@ -505,7 +509,7 @@ class FortiManager(object):
                                               headers=headers, data=fac_data)
             token = res.get("access_token", "")
             json_request["access_token"] = token
-        elif self._flatui_proxy:
+        elif self.is_flatui_proxy:
             json_request["method"] = "login"
             json_request["url"] = "/gui/userauth"
             json_request["params"] = {
@@ -524,7 +528,7 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
-            if self._flatui_proxy:
+            if self.is_flatui_proxy:
                 if self._logger is None:
                     self.getLog()
                 sess_cookies = self.sess.cookies.get_dict()
@@ -578,7 +582,7 @@ class FortiManager(object):
                        "Authorization": "Bearer {apikey}".format(apikey=self._passwd)}
         else:
             headers = {"content-type": "application/json"}
-            if self._flatui_proxy and self.xsrf_token:
+            if self.is_flatui_proxy and self.xsrf_token:
                 headers.update({"Xsrf-Token": "{token}".format(token=self.xsrf_token)})
         self.req_resp_object.reset()
         if self.sid is None:
@@ -733,7 +737,7 @@ class FortiManager(object):
             self._url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host)
             self._post_login_request("post", None)
             self._url = "{proto}://{host}/jsonrpc".format(proto="https" if self._use_ssl else "http", host=self._host)
-        elif self._flatui_proxy:
+        elif self.is_flatui_proxy:
             self._url = self.get_flatui_url(is_auth=True)
             self._post_login_request("post", None)
             self._url = self.get_flatui_url(is_auth=False)
@@ -741,11 +745,11 @@ class FortiManager(object):
             self._post_login_request("exec",
                                      self.common_datagram_params("execute", "sys/login/user",
                                                                  passwd=self._passwd, user=self._user))
-        if not self._flatui_proxy:
+        if not self.is_flatui_proxy:
             self._lock_ctx.check_mode()
         if self.forticloud_used:
             login_url = "https://{host}/p/forticloud_jsonrpc_login/".format(host=self._host)
-        elif self._flatui_proxy:
+        elif self.is_flatui_proxy:
             login_url = "https://{host}/cgi-bin/module/flatui_auth".format(host=self._host)
         else:
             login_url = "sys/login/user"
@@ -758,7 +762,7 @@ class FortiManager(object):
         if self.sid is not None:
             if self._lock_ctx.uses_workspace:
                 self._lock_ctx.run_unlock()
-            if self._flatui_proxy:
+            if self.is_flatui_proxy:
                 try:
                     response = self.sess.post(self.get_flatui_url(is_auth=True),
                         data=json.dumps({"url": "/gui/logout"}),
