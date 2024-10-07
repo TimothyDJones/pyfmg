@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from pkgutil import get_data
 from pprint import pformat
 import uuid
 from datetime import datetime
@@ -508,7 +509,8 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
-            # self._logger.info("Response from login:\n{res}\nSession from login:\n{c}"
+            self._logger.info("Response from login:\n{res}\nSession from login:\n{c}"
+                .format(res=response, c=self.sess))
             #     .format(res=pformat(object=response, indent=2, compact=True),
             #         c=pformat(object=self.sess, indent=2, compact=True)))
             if self.forticloud_used:
