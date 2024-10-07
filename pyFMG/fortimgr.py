@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from pprint import pformat
 import uuid
 from datetime import datetime
 import time
@@ -510,6 +511,9 @@ class FortiManager(object):
             if self.forticloud_used:
                 rev_url = "https://customerapiauth.fortinet.com/api/v1/oauth/revoke_token/"
                 self._revoke_oauth_token(rev_url, headers, token)
+
+            self._logger.info("Cookies from login:\n{c}".format(
+                c=pformat(object=self.sess.cookies.get_dict(), indent=2, compact=True)))
 
             return self._handle_response(response, login=True)
         except ReqConnError as err:
