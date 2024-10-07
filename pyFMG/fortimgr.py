@@ -509,8 +509,8 @@ class FortiManager(object):
         try:
             response = self.sess.post(self._url, data=json.dumps(json_request), headers=headers, verify=self.verify_ssl,
                                       timeout=self.timeout)
-            self._logger.info("Response from login:\n{res}\nSession from login:\n{c}"
-                .format(res=response, c=self.sess))
+            self._logger.info("Cookies from login:\n{c}"
+                .format(c=self.sess.cookies.get_dict()))
             #     .format(res=pformat(object=response, indent=2, compact=True),
             #         c=pformat(object=self.sess, indent=2, compact=True)))
             if self.forticloud_used:
