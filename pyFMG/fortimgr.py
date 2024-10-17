@@ -820,6 +820,10 @@ class FortiManager(object):
     def get(self, url, *args, **kwargs):
         return self._post_request("get", self.common_datagram_params("get", url, *args, **kwargs))
 
+    # Only applies to `flatui_proxy` calls!
+    def post(self, url, *args, **kwargs):
+        return self._post_request("post", self.common_datagram_params("post", url, *args, **kwargs))
+
     def add(self, url, *args, **kwargs):
         return self._post_request("add", self.common_datagram_params("add", url, *args, **kwargs))
 
