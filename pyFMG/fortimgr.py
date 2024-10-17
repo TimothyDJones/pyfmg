@@ -808,7 +808,8 @@ class FortiManager(object):
             keylist = list(kwargs)
             for k in keylist:
                 kwargs[k.replace("___", " ").replace("__", "-")] = kwargs.pop(k)
-            if method_type == "get" or method_type == "clone":
+            # if method_type == "get" or method_type == "clone":
+            if method_type in ["get", "clone", "post"]:
                 params[0].update(kwargs)
             else:
                 if kwargs.get("data", False):
